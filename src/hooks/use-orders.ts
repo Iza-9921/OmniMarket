@@ -7,6 +7,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiFetch, jsonBody } from "@/lib/api-client";
+import {
+  applyOrderStatus,
+  orderBulkSchema,
+  type OrderBulkInput,
+} from "@/lib/bulk";
 import { filtersToParams } from "@/lib/filters";
 import { withoutRow } from "./use-products";
 import type { OrderInput } from "@/lib/schemas/catalog";
@@ -90,5 +95,38 @@ export function useDeleteOrder() {
       queryClient.invalidateQueries({ queryKey: ["orders", "board"] });
       return queryClient.invalidateQueries({ queryKey: listKey });
     },
+  });
+}
+
+/** Cambio de estado en lote optimista: misma estrategia que en productos. */
+export function useBulkUpdateOrders() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OrderBulkInput) =>
+      apiFetch<{ updated: number; unchanged: number }>("/api/orders/bulk", {
+        method: "PATCH",
+        body: jsonBody(input),
+      }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const snapshots = queryClient.getQueriesData<OrderList>({
+        queryKey: listKey,
+      });
+      const { ids, status } = orderBulkSchema.parse(input);
+      const selected = new Set(ids);
+      queryClient.setQueriesData<OrderList>({ queryKey: listKey }, (list) =>
+        list
+          ? { ...list, data: applyOrderStatus(list.data, selected, status) }
+          : list,
+      );
+      return { snapshots };
+    },
+    onError: (_error, _input, context) => {
+      for (const [key, data] of context?.snapshots ?? []) {
+        queryClient.setQueryData(key, data);
+      }
+    },
+    // También el tablero Kanban y los detalles abiertos.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
   });
 }

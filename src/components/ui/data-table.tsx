@@ -5,20 +5,50 @@ import {
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
+  type RowSelectionState,
 } from "@tanstack/react-table";
+import { useEffect, useMemo, useRef } from "react";
 import { Skeleton } from "./skeleton";
+
+export type { RowSelectionState };
+
+/** Selección de filas (edición en lote). Las filas se identifican por su `id`. */
+export type TableSelection<T> = {
+  selected: RowSelectionState;
+  onChange: (selected: RowSelectionState) => void;
+  rowLabel: (row: T) => string;
+};
+
+function Checkbox({
+  indeterminate = false,
+  ...props
+}: React.ComponentProps<"input"> & { indeterminate?: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="size-4 rounded border-slate-300 text-indigo-600 accent-indigo-600"
+      {...props}
+    />
+  );
+}
 
 /**
  * Tabla con paginación del servidor (TanStack Table en modo manual).
  * Mientras llega la primera página muestra filas skeleton (§4).
  */
-export function DataTable<T>({
+export function DataTable<T extends { id: string }>({
   columns,
   data,
   loading,
   fetching = false,
   emptyMessage,
   label,
+  selection,
 }: {
   columns: ColumnDef<T, unknown>[];
   data: T[];
@@ -26,15 +56,51 @@ export function DataTable<T>({
   fetching?: boolean;
   emptyMessage: string;
   label: string;
+  selection?: TableSelection<T>;
 }) {
+  const allColumns = useMemo<ColumnDef<T, unknown>[]>(() => {
+    if (!selection) return columns;
+    const { rowLabel } = selection;
+    return [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            aria-label="Seleccionar todas las filas de esta página"
+            checked={table.getIsAllPageRowsSelected()}
+            indeterminate={table.getIsSomePageRowsSelected()}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            aria-label={`Seleccionar ${rowLabel(row.original)}`}
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+      },
+      ...columns,
+    ];
+  }, [columns, selection]);
+
   // TanStack Table v8 devuelve funciones que el React Compiler no puede memorizar:
   // este componente se renderiza sin esa optimización, con el mismo resultado.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
+    getRowId: (row) => row.id,
+    enableRowSelection: Boolean(selection),
+    state: { rowSelection: selection?.selected ?? {} },
+    onRowSelectionChange: (updater) => {
+      if (!selection) return;
+      selection.onChange(
+        typeof updater === "function" ? updater(selection.selected) : updater,
+      );
+    },
   });
 
   return (
@@ -68,7 +134,7 @@ export function DataTable<T>({
           {loading
             ? Array.from({ length: 8 }, (_, i) => (
                 <tr key={i} data-testid="row-skeleton">
-                  {columns.map((_, j) => (
+                  {allColumns.map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <Skeleton className="h-4 w-full max-w-32" />
                     </td>
@@ -76,7 +142,15 @@ export function DataTable<T>({
                 </tr>
               ))
             : table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50">
+                <tr
+                  key={row.id}
+                  aria-selected={selection ? row.getIsSelected() : undefined}
+                  className={
+                    row.getIsSelected()
+                      ? "bg-indigo-50/70"
+                      : "hover:bg-slate-50"
+                  }
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
@@ -93,7 +167,7 @@ export function DataTable<T>({
           {!loading && data.length === 0 && (
             <tr>
               <td
-                colSpan={columns.length}
+                colSpan={allColumns.length}
                 className="px-4 py-12 text-center text-sm text-slate-500"
               >
                 {emptyMessage}

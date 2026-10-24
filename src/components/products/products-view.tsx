@@ -19,7 +19,9 @@ import {
   useProductList,
   type ProductList,
 } from "@/hooks/use-products";
+import { useRowSelection } from "@/hooks/use-row-selection";
 import { useUrlFilters } from "@/hooks/use-url-filters";
+import { ProductBulkBar } from "./product-bulk-bar";
 import { PRODUCT_STATUSES, type ProductStatus } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
@@ -52,6 +54,10 @@ export function ProductsView() {
   const catalog = useCatalog();
   const deleteProduct = useDeleteProduct();
   const [toDelete, setToDelete] = useState<Row | null>(null);
+  const selection = useRowSelection(
+    JSON.stringify(filters),
+    data?.data.map((row) => row.id) ?? [],
+  );
 
   const columns = useMemo<ColumnDef<Row, unknown>[]>(
     () => [
@@ -233,6 +239,10 @@ export function ProductsView() {
         </div>
       </div>
 
+      {selection.selectedIds.length > 0 && (
+        <ProductBulkBar ids={selection.selectedIds} onDone={selection.clear} />
+      )}
+
       {isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           No se pudieron cargar los productos.{" "}
@@ -248,6 +258,11 @@ export function ProductsView() {
         <DataTable
           label="Productos"
           columns={columns}
+          selection={{
+            selected: selection.selected,
+            onChange: selection.setSelected,
+            rowLabel: (row) => row.name,
+          }}
           data={data?.data ?? []}
           loading={isPending}
           fetching={isFetching}

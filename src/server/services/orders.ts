@@ -196,7 +196,7 @@ function statusEvent(
   fromStatus: OrderData["status"] | null,
   toStatus: OrderData["status"],
   actorId: string | null,
-  source: "FORM" | "KANBAN" = "FORM",
+  source: "FORM" | "KANBAN" | "BULK" = "FORM",
 ) {
   return {
     orderId,
@@ -432,4 +432,59 @@ export async function updateOrderStatus(
     .innerJoin(customers, eq(customers.id, orders.customerId))
     .where(eq(orders.id, id));
   return { ...card, updatedAt: card.updatedAt.toISOString() };
+}
+
+/**
+ * Cambio de estado en lote (RF-53): todo o nada. Solo cambian (y generan evento
+ * BULK) los pedidos con un estado distinto; se recalculan las ventas de sus días.
+ */
+export async function bulkUpdateOrderStatus(
+  db: Database,
+  ids: string[],
+  status: OrderStatus,
+  actorId: string | null,
+) {
+  return db.transaction(async (tx) => {
+    const current = await tx
+      .select({
+        id: orders.id,
+        status: orders.status,
+        placedAt: orders.placedAt,
+      })
+      .from(orders)
+      .where(inArray(orders.id, ids))
+      .for("update");
+    if (current.length !== ids.length) {
+      throw new NotFoundError("ORDERS_NOT_FOUND");
+    }
+
+    const changed = current.filter((order) => order.status !== status);
+    if (changed.length > 0) {
+      await tx
+        .update(orders)
+        .set({
+          status,
+          version: sql`${orders.version} + 1`,
+          updatedAt: sql`now()`,
+        })
+        .where(
+          inArray(
+            orders.id,
+            changed.map((order) => order.id),
+          ),
+        );
+      await tx
+        .insert(orderStatusEvents)
+        .values(
+          changed.map((order) =>
+            statusEvent(order.id, order.status, status, actorId, "BULK"),
+          ),
+        );
+      const days = [
+        ...new Set(changed.map((order) => toBusinessDay(order.placedAt))),
+      ];
+      await refreshDailySales(tx, days);
+    }
+    return { updated: changed.length, unchanged: ids.length - changed.length };
+  });
 }

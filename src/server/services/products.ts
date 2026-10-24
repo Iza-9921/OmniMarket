@@ -7,11 +7,13 @@ import {
   eq,
   gt,
   ilike,
+  inArray,
   ne,
   or,
   sql,
   type SQL,
 } from "drizzle-orm";
+import { adjustPrice, type ProductChanges } from "@/lib/bulk";
 import type { ProductData } from "@/lib/schemas/catalog";
 import { LOW_STOCK_MAX, type ProductListQuery } from "@/lib/schemas/lists";
 import type { Database } from "@/server/db/client";
@@ -203,4 +205,59 @@ export async function listCategories(db: Database) {
     .select({ id: categories.id, name: categories.name })
     .from(categories)
     .orderBy(asc(categories.name));
+}
+
+/**
+ * Edición en lote (RF-53): todo o nada en una transacción. Si alguno de los
+ * productos ya no existe, no se cambia ninguno. El ajuste de precio usa la misma
+ * función que la actualización optimista del navegador (mismo redondeo).
+ */
+export async function bulkUpdateProducts(
+  db: Database,
+  ids: string[],
+  changes: ProductChanges,
+) {
+  try {
+    return await db.transaction(async (tx) => {
+      const current = await tx
+        .select({ id: products.id, priceCents: products.priceCents })
+        .from(products)
+        .where(inArray(products.id, ids))
+        .for("update");
+      if (current.length !== ids.length) {
+        throw new NotFoundError("PRODUCTS_NOT_FOUND");
+      }
+
+      const set: Partial<typeof products.$inferInsert> = {};
+      if (changes.status) set.status = changes.status;
+      if (changes.categoryId) set.categoryId = changes.categoryId;
+      if (changes.stock !== undefined) set.stock = changes.stock;
+      await tx
+        .update(products)
+        .set({ ...set, updatedAt: sql`now()` })
+        .where(inArray(products.id, ids));
+
+      if (changes.priceAdjustPct !== undefined) {
+        const pct = changes.priceAdjustPct;
+        const values = sql.join(
+          current.map(
+            (row) =>
+              sql`(${row.id}::uuid, ${adjustPrice(row.priceCents, pct)}::int)`,
+          ),
+          sql`, `,
+        );
+        await tx.execute(sql`
+          update products set price_cents = v.price
+          from (values ${values}) as v(id, price)
+          where products.id = v.id
+        `);
+      }
+      return { updated: ids.length };
+    });
+  } catch (error) {
+    if (pgErrorCode(error) === PG_FOREIGN_KEY_VIOLATION) {
+      throw new ConflictError("CATEGORY_NOT_FOUND", "La categoría no existe.");
+    }
+    throw error;
+  }
 }

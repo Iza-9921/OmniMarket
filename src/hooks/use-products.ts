@@ -7,6 +7,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiFetch, jsonBody } from "@/lib/api-client";
+import {
+  applyProductChanges,
+  productBulkSchema,
+  type ProductBulkInput,
+} from "@/lib/bulk";
 import { filtersToParams } from "@/lib/filters";
 import type { ProductInput } from "@/lib/schemas/catalog";
 import type { ProductListQuery } from "@/lib/schemas/lists";
@@ -93,4 +98,51 @@ export function withoutRow<
     data: list.data.filter((row) => row.id !== id),
     pagination: { ...list.pagination, total: list.pagination.total - 1 },
   };
+}
+
+type BulkProductsVariables = { input: ProductBulkInput; categoryName?: string };
+
+/**
+ * Edición en lote optimista (RF-52): las filas cambian al instante en todos los
+ * listados en caché; si el servidor rechaza la operación (es todo o nada) se
+ * restauran exactamente como estaban.
+ */
+export function useBulkUpdateProducts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ input }: BulkProductsVariables) =>
+      apiFetch<{ updated: number }>("/api/products/bulk", {
+        method: "PATCH",
+        body: jsonBody(input),
+      }),
+    onMutate: async ({ input, categoryName }) => {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const snapshots = queryClient.getQueriesData<ProductList>({
+        queryKey: listKey,
+      });
+      const { ids, changes } = productBulkSchema.parse(input);
+      const selected = new Set(ids);
+      queryClient.setQueriesData<ProductList>({ queryKey: listKey }, (list) =>
+        list
+          ? {
+              ...list,
+              data: applyProductChanges(
+                list.data,
+                selected,
+                changes,
+                categoryName,
+              ),
+            }
+          : list,
+      );
+      return { snapshots };
+    },
+    onError: (_error, _variables, context) => {
+      for (const [key, data] of context?.snapshots ?? []) {
+        queryClient.setQueryData(key, data);
+      }
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: productKeys.all }),
+  });
 }
