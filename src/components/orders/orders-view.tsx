@@ -126,7 +126,7 @@ export function OrdersView() {
             c.name,
           ])}
         />
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
           <label htmlFor="filter-from">Desde</label>
           <Input
             id="filter-from"

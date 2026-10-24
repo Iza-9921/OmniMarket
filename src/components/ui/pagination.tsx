@@ -31,7 +31,7 @@ export function Pagination({
         </span>{" "}
         de <span className="font-medium text-slate-900">{total}</span>
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={sizeId} className="text-slate-500">
           Por página
         </label>

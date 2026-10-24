@@ -12,11 +12,13 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
     <Providers>
       <div className="flex min-h-full flex-1 flex-col">
         <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4">
-            <div className="flex items-center gap-6">
-              <Link href="/dashboard" aria-label="Ir al dashboard">
-                <Brand />
-              </Link>
+          {/* En celular la navegación baja a una segunda fila con desplazamiento
+              propio, para que la página nunca se desborde a los lados. */}
+          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 md:h-16 md:flex-nowrap md:py-0">
+            <Link href="/dashboard" aria-label="Ir al dashboard">
+              <Brand />
+            </Link>
+            <div className="relative order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 md:order-none md:mx-0 md:mr-auto md:w-auto md:px-0">
               <Suspense fallback={<NavLinks />}>
                 <AppNav />
               </Suspense>
@@ -26,7 +28,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             </Suspense>
           </div>
         </header>
-        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
+        <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-8">
           {children}
         </div>
       </div>

@@ -141,7 +141,7 @@ export function KanbanBoard() {
         },
       }}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="relative flex gap-4 overflow-x-auto pb-4">
         {ORDER_STATUSES.map((status) => (
           <Column
             key={status}
@@ -333,7 +333,7 @@ function CardBody({
 
 function BoardSkeleton() {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4" aria-busy="true">
+    <div className="relative flex gap-4 overflow-x-auto pb-4" aria-busy="true">
       {ORDER_STATUSES.map((status) => (
         <div
           key={status}

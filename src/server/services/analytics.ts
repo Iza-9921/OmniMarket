@@ -1,5 +1,6 @@
-import { and, count, desc, gte, lte, sum, type SQL } from "drizzle-orm";
-import { CURRENCY } from "@/lib/domain";
+import { and, count, desc, gte, lte, sql, sum, type SQL } from "drizzle-orm";
+import { fillDays } from "@/lib/dashboard";
+import { CURRENCY, TIME_ZONE } from "@/lib/domain";
 import { centsToAmount } from "@/lib/format";
 import { avgTicket, grossMargin, grossMarginPct } from "@/lib/metrics";
 import type { AnalyticsQuery } from "@/lib/schemas/test-endpoints";
@@ -64,5 +65,87 @@ export async function getSalesAnalytics(db: Database, query: AnalyticsQuery) {
       total: totals.days,
       totalPages: Math.ceil(totals.days / query.limit),
     },
+  };
+}
+
+/**
+ * Datos del dashboard para un rango de días. Los KPIs vienen de
+ * getSalesAnalytics, el mismo servicio de GET /api/test/analytics: para el
+ * mismo rango, las cifras son idénticas. Importes de las series en centavos.
+ */
+export async function getDashboard(
+  db: Database,
+  range: { from: string; to: string },
+) {
+  const { summary } = await getSalesAnalytics(db, {
+    page: 1,
+    limit: 1,
+    ...range,
+  });
+
+  const days = await db
+    .select({
+      date: dailySales.date,
+      orders: dailySales.ordersCount,
+      revenueCents: dailySales.revenueCents,
+    })
+    .from(dailySales)
+    .where(
+      and(gte(dailySales.date, range.from), lte(dailySales.date, range.to)),
+    );
+
+  const businessDay = sql`(o.placed_at at time zone ${TIME_ZONE})::date`;
+  const inRange = sql`o.status <> 'CANCELLED'
+    and ${businessDay} between ${range.from}::date and ${range.to}::date`;
+
+  const { rows: byCategory } = await db.execute<{
+    name: string;
+    units: number;
+    revenueCents: number;
+  }>(sql`
+    select c.name, sum(i.quantity)::int as units,
+      sum(i.quantity * i.unit_price_cents)::bigint as "revenueCents"
+    from order_items i
+    join orders o on o.id = i.order_id
+    join products p on p.id = i.product_id
+    join categories c on c.id = p.category_id
+    where ${inRange}
+    group by c.name
+    order by "revenueCents" desc, c.name
+  `);
+
+  const { rows: topProducts } = await db.execute<{
+    id: string;
+    sku: string;
+    name: string;
+    units: number;
+    revenueCents: number;
+  }>(sql`
+    select p.id, p.sku, p.name, sum(i.quantity)::int as units,
+      sum(i.quantity * i.unit_price_cents)::bigint as "revenueCents"
+    from order_items i
+    join orders o on o.id = i.order_id
+    join products p on p.id = i.product_id
+    where ${inRange}
+    group by p.id, p.sku, p.name
+    order by "revenueCents" desc, p.sku
+    limit 5
+  `);
+
+  const toNumber = <T extends { revenueCents: number | string }>(row: T) => ({
+    ...row,
+    revenueCents: Number(row.revenueCents),
+  });
+
+  return {
+    range,
+    summary,
+    daily: fillDays(days, range.from, range.to, (date) => ({
+      date,
+      orders: 0,
+      revenueCents: 0,
+    })),
+    byCategory: byCategory.map(toNumber),
+    topProducts: topProducts.map(toNumber),
   };
 }

@@ -45,3 +45,32 @@ export function formatDate(value: Date | string): string {
 export function toBusinessDay(value: Date): string {
   return dayKeyFormatter.format(value);
 }
+
+/** Importe en pesos (no centavos), p. ej. 9657155.61 → "$9,657,155.61". */
+export function formatAmount(amount: number): string {
+  return currencyFormatter.format(amount);
+}
+
+/**
+ * Importe compacto para ejes y etiquetas: $950 · $12.3 mil · $1.2 M.
+ * (El formato compacto de Intl en es-MX da "12.3 k$", poco legible.)
+ */
+export function formatCompactCurrency(amount: number): string {
+  const sign = amount < 0 ? "-" : "";
+  const n = Math.abs(amount);
+  const short = (value: number) => value.toFixed(1).replace(/\.0$/, "");
+  if (n >= 1_000_000) return `${sign}$${short(n / 1_000_000)} M`;
+  if (n >= 1_000) return `${sign}$${short(n / 1_000)} mil`;
+  return `${sign}$${Math.round(n)}`;
+}
+
+const shortDayFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  day: "numeric",
+  month: "short",
+});
+
+/** Día calendario "2026-10-24" → "24 oct" (sin desfase por zona horaria). */
+export function formatShortDay(day: string): string {
+  return shortDayFormatter.format(new Date(`${day}T12:00:00Z`));
+}

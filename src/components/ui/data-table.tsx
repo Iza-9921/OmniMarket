@@ -103,8 +103,10 @@ export function DataTable<T extends { id: string }>({
     },
   });
 
+  // `relative`: contiene los textos sr-only (position: absolute) dentro del
+  // scroll; si no, escapan del recorte y desbordan la página en celular.
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <div className="relative overflow-x-auto rounded-xl border border-slate-200 bg-white">
       <table
         aria-label={label}
         aria-busy={loading || fetching}
