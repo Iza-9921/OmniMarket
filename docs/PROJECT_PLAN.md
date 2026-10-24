@@ -397,7 +397,7 @@ Cada fase termina con algo **desplegado y verificable**. No se pasa de fase con 
 
 ## 9. Matriz de cumplimiento
 
-Última actualización: cierre de F7 (2026-10-24). Evidencia en el historial de GitHub Actions y en el resumen de cada fase.
+Última actualización: cierre de F8 (2026-10-24): lista de comprobación §6 verificada en producción con un navegador limpio. Evidencia en el historial de GitHub Actions y en el resumen de cada fase.
 
 | Req.            | Descripción                         | §    | Fase   | Cómo se verifica                                                                                                                            | Estado                                                                                                                              |
 | --------------- | ----------------------------------- | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
