@@ -17,6 +17,9 @@ if (!externalBaseURL) {
 }
 
 export default defineConfig({
+  // Contra un despliegue remoto la latencia varía (arranques en frío de las
+  // funciones): se amplían las esperas para no confundir lentitud con fallos.
+  expect: { timeout: externalBaseURL ? 10_000 : 5_000 },
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
