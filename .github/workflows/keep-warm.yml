@@ -1,0 +1,51 @@
+# Mantiene despierta la base de datos de producción durante la semana de
+# evaluación.
+#
+# En el plan gratis de Neon la base se suspende tras 5 minutos sin uso y la
+# primera petición después espera ~700 ms a que despierte (objetivo < 300 ms).
+# Este flujo consulta /api/test/analytics cada 4 minutos.
+#
+# GitHub puede retrasar los `schedule` varios minutos: cada ejecución hace ping
+# durante 55 minutos y la siguiente (cada 30) la reemplaza, así no quedan huecos
+# aunque llegue hasta 25 minutos tarde.
+#
+# Presupuesto: despierta 24 h consume ~6 CU-hora al día (0.25 CU) de las 100 del
+# mes en el plan gratis. Por eso se detiene sola en STOP_AT.
+name: Mantener despierta la base de datos
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  URL: https://omnimarket-psi.vercel.app/api/test/analytics?page=1&limit=1
+  # Sábado 31 de octubre de 2026, 23:59 en la Ciudad de México.
+  STOP_AT: "2026-11-01T05:59:00Z"
+
+jobs:
+  ping:
+    name: Ping a producción
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Ping cada 4 minutos durante 55 minutos
+        run: |
+          end=$(( $(date +%s) + 55 * 60 ))
+          stop=$(date -d "$STOP_AT" +%s)
+          while [ "$(date +%s)" -lt "$end" ]; do
+            if [ "$(date +%s)" -ge "$stop" ]; then
+              echo "Fin de la semana de evaluación: ya no se hace ping."
+              exit 0
+            fi
+            curl -s -o /dev/null --max-time 20 \
+              -w "$(date -u +%H:%M:%S) HTTP %{http_code} en %{time_total}s\n" \
+              "$URL" || echo "$(date -u +%H:%M:%S) sin respuesta"
+            sleep 240
+          done
