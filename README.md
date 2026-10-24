@@ -20,6 +20,7 @@ curl "https://omnimarket-psi.vercel.app/api/test/kanban-status?orderId=ORD-0001"
 curl -X POST -H "x-test-token: <token>" https://omnimarket-psi.vercel.app/api/test/reset-data
 ```
 
+- El token de `reset-data` no se publica en este repositorio: se entrega al evaluador en el documento de entrega del proyecto.
 - Las respuestas incluyen la cabecera `Server-Timing` y `meta.durationMs` con el tiempo de las consultas en el servidor.
 - `limit` admite de 1 a 100. Los parámetros inválidos responden `400` con el detalle del error.
 - Importes en MXN. **Ingresos** = subtotales sin IVA de pedidos no cancelados; **ticket promedio** = ingresos / pedidos; **margen bruto** = ingresos − costo.

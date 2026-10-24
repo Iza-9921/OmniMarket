@@ -518,13 +518,13 @@ jobs:
 
 Confirmadas por la responsable del proyecto el 2026-10-24.
 
-| #   | Decisión                    | Resultado                                                                                                                                                                                          |
-| --- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Protección de `/api/test/*` | `analytics` y `kanban-status`: públicos y de solo lectura. `reset-data`: exige la cabecera `x-test-token` (variable `TEST_ENDPOINTS_TOKEN`); el valor se documenta en el README para el evaluador. |
-| D2  | Repositorio                 | Repo propio: `github.com/Iza-9921/OmniMarket` (carpeta `~/Desktop/OmniMarket`).                                                                                                                    |
-| D3  | Base de datos               | PostgreSQL en Neon, integrado desde Vercel, en la misma región que las funciones.                                                                                                                  |
-| D4  | Rol inicial                 | Todo usuario nuevo entra como `OPERATOR` (Kanban, CRUD y Bulk Update). Nadie es `ADMIN` por defecto.                                                                                               |
-| D5  | Región                      | MXN, `es-MX`, `America/Mexico_City`.                                                                                                                                                               |
+| #   | Decisión                    | Resultado                                                                                                                                                                                                                                                                                     |
+| --- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Protección de `/api/test/*` | `analytics` y `kanban-status`: públicos y de solo lectura. `reset-data`: exige la cabecera `x-test-token` (variable `TEST_ENDPOINTS_TOKEN`); el valor **no** se publica en el repositorio (es público): se entrega al evaluador en el documento de entrega (ajuste confirmado el 2026-10-24). |
+| D2  | Repositorio                 | Repo propio: `github.com/Iza-9921/OmniMarket` (carpeta `~/Desktop/OmniMarket`).                                                                                                                                                                                                               |
+| D3  | Base de datos               | PostgreSQL en Neon, integrado desde Vercel, en la misma región que las funciones.                                                                                                                                                                                                             |
+| D4  | Rol inicial                 | Todo usuario nuevo entra como `OPERATOR` (Kanban, CRUD y Bulk Update). Nadie es `ADMIN` por defecto.                                                                                                                                                                                          |
+| D5  | Región                      | MXN, `es-MX`, `America/Mexico_City`.                                                                                                                                                                                                                                                          |
 
 ---
 
