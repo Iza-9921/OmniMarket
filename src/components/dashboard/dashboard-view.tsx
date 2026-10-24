@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { lazy, Suspense, useId, useState } from "react";
 import { Button, Input } from "@/components/ui/controls";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUrlFilters } from "@/hooks/use-url-filters";
@@ -19,9 +19,28 @@ import {
   formatShortDay,
 } from "@/lib/format";
 import type { getDashboard } from "@/server/services/analytics";
-import { CategoryChart, RevenueChart } from "./charts";
 
 type Dashboard = Awaited<ReturnType<typeof getDashboard>>;
+
+// Recharts pesa más que el resto de la pantalla: se descarga aparte y en
+// paralelo con la consulta de métricas, y cada gráfica tiene su propio
+// Suspense, así los KPIs no esperan a la librería de gráficas.
+const loadCharts = () => import("./charts");
+if (typeof window !== "undefined") void loadCharts();
+const RevenueChart = lazy(() =>
+  loadCharts().then((m) => ({ default: m.RevenueChart })),
+);
+const CategoryChart = lazy(() =>
+  loadCharts().then((m) => ({ default: m.CategoryChart })),
+);
+
+function ChartSuspense({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<Skeleton className="h-72 w-full" />}>
+      {children}
+    </Suspense>
+  );
+}
 
 export function DashboardView() {
   const { filters, setFilters } = useUrlFilters(dashboardQuerySchema);
@@ -69,7 +88,9 @@ export function DashboardView() {
               title="Ingresos por día"
               subtitle={`${formatShortDay(data.range.from)} – ${formatShortDay(data.range.to)} · sin IVA, sin cancelados`}
             >
-              <RevenueChart data={data.daily} />
+              <ChartSuspense>
+                <RevenueChart data={data.daily} />
+              </ChartSuspense>
               <DataTableToggle label="Ver ingresos por día">
                 <table className="w-full text-xs">
                   <thead>
@@ -101,7 +122,9 @@ export function DashboardView() {
               subtitle="Mismo periodo, de mayor a menor"
             >
               {data.byCategory.length ? (
-                <CategoryChart data={data.byCategory} />
+                <ChartSuspense>
+                  <CategoryChart data={data.byCategory} />
+                </ChartSuspense>
               ) : (
                 <EmptyChart />
               )}
