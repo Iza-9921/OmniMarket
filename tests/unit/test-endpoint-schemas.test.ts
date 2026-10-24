@@ -41,6 +41,13 @@ describe("analyticsQuerySchema", () => {
     expect(result.error?.issues[0].path).toEqual([field]);
   });
 
+  it("devuelve los mensajes de error en español", () => {
+    const result = parseQuery("limit=101");
+    expect(result.error?.issues[0].message).toBe(
+      "Demasiado grande: se esperaba que número fuera <=100",
+    );
+  });
+
   it("ignora parámetros vacíos", () => {
     const result = parseQuery("page=&limit=");
     expect(result.success && result.data).toEqual({ page: 1, limit: 50 });
