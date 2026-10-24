@@ -14,6 +14,15 @@ test.describe("sin sesión", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("las APIs privadas responden 401 sin sesión", async ({ request }) => {
+    for (const path of ["/api/products", "/api/orders", "/api/catalog"]) {
+      const response = await request.get(path);
+      expect(response.status(), path).toBe(401);
+    }
+    const create = await request.post("/api/products", { data: {} });
+    expect(create.status()).toBe(401);
+  });
+
   test("el login ofrece solo Google y GitHub, sin contraseña", async ({
     page,
   }) => {

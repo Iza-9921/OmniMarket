@@ -12,13 +12,19 @@ export async function refreshDailySales(db: Executor, days?: string[]) {
   const businessDay = sql`(placed_at at time zone ${TIME_ZONE})::date`;
 
   if (days && days.length === 0) return;
-  const dayFilter = days
-    ? sql`${businessDay} = any(${days}::date[])`
-    : sql`true`;
+  // Drizzle expande un arreglo como lista de parámetros, no como arreglo de
+  // PostgreSQL: se arma la lista `('2026-10-24'::date, …)` de forma explícita.
+  const dayList = days
+    ? sql.join(
+        days.map((day) => sql`${day}::date`),
+        sql`, `,
+      )
+    : undefined;
+  const dayFilter = dayList ? sql`${businessDay} in (${dayList})` : sql`true`;
 
   await db.execute(
-    days
-      ? sql`delete from daily_sales where date = any(${days}::date[])`
+    dayList
+      ? sql`delete from daily_sales where date in (${dayList})`
       : sql`delete from daily_sales`,
   );
   await db.execute(sql`

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/auth/session";
@@ -16,8 +17,22 @@ export default function DashboardPage() {
         <Greeting />
       </Suspense>
       <p className="mt-6 max-w-xl rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
-        Las métricas de ventas, el CRUD de productos y pedidos y el tablero
-        Kanban se incorporan en las siguientes fases del proyecto.
+        Ya puedes administrar{" "}
+        <Link
+          href="/products"
+          className="font-medium text-indigo-600 hover:underline"
+        >
+          productos
+        </Link>{" "}
+        y{" "}
+        <Link
+          href="/orders"
+          className="font-medium text-indigo-600 hover:underline"
+        >
+          pedidos
+        </Link>
+        . Las métricas de ventas y el tablero Kanban se incorporan en las
+        siguientes fases del proyecto.
       </p>
     </main>
   );

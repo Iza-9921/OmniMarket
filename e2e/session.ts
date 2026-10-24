@@ -1,3 +1,4 @@
+import type { BrowserContext } from "@playwright/test";
 import { encode } from "next-auth/jwt";
 
 // Simulación de sesión (§5): firma un JWT de Auth.js con el mismo AUTH_SECRET que
@@ -9,6 +10,11 @@ export const TEST_USER = {
   email: "evaluadora@ejemplo.mx",
   role: "OPERATOR" as const,
 };
+
+/** Inicia la sesión simulada en el contexto del navegador de la prueba. */
+export async function signIn(context: BrowserContext, baseURL: string) {
+  await context.addCookies([await sessionCookie(baseURL)]);
+}
 
 export async function sessionCookie(baseURL: string) {
   const secret = process.env.AUTH_SECRET;
