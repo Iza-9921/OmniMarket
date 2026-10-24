@@ -2,6 +2,8 @@
 
 Dashboard de analítica y administración de e-commerce construido con Next.js (App Router), TypeScript y Tailwind CSS.
 
+**Producción:** <https://omnimarket-psi.vercel.app> · estado: <https://omnimarket-psi.vercel.app/api/health>
+
 > **Estado:** Fase 0 (infraestructura base). Las funciones de negocio todavía no están implementadas. El plan completo está en [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
 
 ## Requisitos
