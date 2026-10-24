@@ -144,10 +144,17 @@ test("se arrastra con el teclado desde el asa de la tarjeta", async ({
   page,
 }) => {
   await page.goto("/kanban");
-  await page
-    .getByRole("button", { name: /^Arrastrar pedido ORD-0011,/ })
-    .focus();
-  await page.keyboard.press("Space");
+  const handle = page.getByRole("button", {
+    name: /^Arrastrar pedido ORD-0011,/,
+  });
+  // En un despliegue remoto el tablero puede tardar en volverse interactivo:
+  // se reintenta hasta que dnd-kit confirma que el arrastre empezó.
+  await expect(async () => {
+    await handle.press("Space");
+    await expect(handle).toHaveAttribute("aria-pressed", "true", {
+      timeout: 1_000,
+    });
+  }).toPass();
   // Cada flecha desplaza la tarjeta 25 px: 12 la llevan a la columna de al lado.
   for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Space");
