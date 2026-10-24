@@ -30,7 +30,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm ci
+      - name: Instalar dependencias
+        run: |
+          echo "node $(node --version) · npm $(npm --version)"
+          if ! npm ci > npm-ci.log 2>&1; then
+            cat npm-ci.log
+            echo "::error title=npm ci::$(grep -m 8 'npm error' npm-ci.log | tr '\n' ' ')"
+            exit 1
+          fi
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
@@ -45,11 +52,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - run: npm ci
+      - name: Instalar dependencias
+        run: |
+          echo "node $(node --version) · npm $(npm --version)"
+          if ! npm ci > npm-ci.log 2>&1; then
+            cat npm-ci.log
+            echo "::error title=npm ci::$(grep -m 8 'npm error' npm-ci.log | tr '\n' ' ')"
+            exit 1
+          fi
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
