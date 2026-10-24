@@ -16,7 +16,11 @@ function stableView(now: Date) {
   return {
     products: data.products,
     customers: data.customers,
-    orders: data.orders.map(({ placedAt: _p, updatedAt: _u, ...rest }) => rest),
+    orders: data.orders.map((order) => ({
+      ...order,
+      placedAt: undefined,
+      updatedAt: undefined,
+    })),
     orderItems: data.orderItems,
   };
 }
