@@ -139,3 +139,22 @@ test("se puede mover sin arrastrar con el selector «Mover a» (teclado)", async
   ).toBeVisible();
   expect((await kanbanStatus(page, "ORD-0003")).status).toBe("SHIPPED");
 });
+
+test("se arrastra con el teclado desde el asa de la tarjeta", async ({
+  page,
+}) => {
+  await page.goto("/kanban");
+  await page
+    .getByRole("button", { name: /^Arrastrar pedido ORD-0011,/ })
+    .focus();
+  await page.keyboard.press("Space");
+  // Cada flecha desplaza la tarjeta 25 px: 12 la llevan a la columna de al lado.
+  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Space");
+
+  await expect(page.getByText("ORD-0011 movido a «En proceso»")).toBeVisible();
+  await expect(
+    column(page, "PROCESSING").getByTestId("card-ORD-0011"),
+  ).toBeVisible();
+  expect((await kanbanStatus(page, "ORD-0011")).status).toBe("PROCESSING");
+});

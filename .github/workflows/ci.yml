@@ -20,7 +20,7 @@ permissions:
 jobs:
   quality:
     name: Lint, tipos, formato y pruebas unitarias
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
@@ -31,7 +31,7 @@ jobs:
 
   integration:
     name: Pruebas de integración (PostgreSQL)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17
@@ -52,7 +52,7 @@ jobs:
 
   e2e:
     name: Build y pruebas E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17
@@ -88,7 +88,7 @@ jobs:
     name: Despliegue a producción (Vercel)
     needs: [quality, integration, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}

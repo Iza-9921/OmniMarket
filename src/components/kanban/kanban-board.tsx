@@ -181,7 +181,7 @@ function Column({
       ref={setNodeRef}
       aria-labelledby={`column-${status}-title`}
       data-testid={`column-${status}`}
-      className={`flex min-w-60 flex-1 flex-col rounded-xl border transition-colors ${
+      className={`flex min-w-60 flex-1 flex-col rounded-xl border transition-colors xl:min-w-0 ${
         isOver
           ? "border-indigo-400 bg-indigo-50"
           : "border-slate-200 bg-slate-100/70"
@@ -386,7 +386,7 @@ function BoardSkeleton() {
       {ORDER_STATUSES.map((status) => (
         <div
           key={status}
-          className="min-w-60 flex-1 space-y-2 rounded-xl border border-slate-200 bg-slate-100/70 p-3"
+          className="min-w-60 flex-1 space-y-2 rounded-xl border border-slate-200 bg-slate-100/70 p-3 xl:min-w-0"
         >
           <Skeleton className="h-5 w-28" />
           {Array.from({ length: 4 }, (_, i) => (
