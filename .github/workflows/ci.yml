@@ -106,7 +106,16 @@ jobs:
           url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Desplegado en $url"
+      # Comprueba el cuerpo de la respuesta, no solo el código HTTP: si la
+      # protección de Vercel está activa, la URL devuelve un 302 al login.
       - name: Verificar el despliegue
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors \
-            "${{ steps.deploy.outputs.url }}/api/health"
+          body=$(curl --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors \
+            "$DEPLOY_URL/api/health")
+          echo "$body"
+          if ! echo "$body" | grep -q '"status":"ok"'; then
+            echo "::error::$DEPLOY_URL/api/health no respondió status ok. ¿Está activa la protección de despliegues de Vercel?"
+            exit 1
+          fi
