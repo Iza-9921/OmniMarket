@@ -5,24 +5,30 @@
 # primera petición después espera ~700 ms a que despierte (objetivo < 300 ms).
 # Este flujo consulta /api/test/analytics cada 4 minutos.
 #
-# GitHub puede retrasar los `schedule` varios minutos: cada ejecución hace ping
-# durante 55 minutos y la siguiente (cada 30) la reemplaza, así no quedan huecos
-# aunque llegue hasta 25 minutos tarde.
+# Los `schedule` de GitHub pueden retrasarse o no ejecutarse (pasó al activarlo),
+# así que no dependemos de ellos: cada ejecución hace ping durante casi 6 horas
+# (el máximo de un job) y antes de terminar se vuelve a lanzar con
+# workflow_dispatch. El `schedule` queda solo de respaldo por si la cadena se corta.
 #
 # Presupuesto: despierta 24 h consume ~6 CU-hora al día (0.25 CU) de las 100 del
 # mes en el plan gratis. Por eso se detiene sola en STOP_AT.
 name: Mantener despierta la base de datos
 
 on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/keep-warm.yml]
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
 
+# Una sola cadena activa: la ejecución nueva reemplaza a la anterior.
 concurrency:
   group: keep-warm
   cancel-in-progress: true
 
-permissions: {}
+permissions:
+  actions: write
 
 env:
   URL: https://omnimarket-psi.vercel.app/api/test/analytics?page=1&limit=1
@@ -33,11 +39,11 @@ jobs:
   ping:
     name: Ping a producción
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 360
     steps:
-      - name: Ping cada 4 minutos durante 55 minutos
+      - name: Ping cada 4 minutos durante 5 h 50 min
         run: |
-          end=$(( $(date +%s) + 55 * 60 ))
+          end=$(( $(date +%s) + 6 * 60 ))
           stop=$(date -d "$STOP_AT" +%s)
           while [ "$(date +%s)" -lt "$end" ]; do
             if [ "$(date +%s)" -ge "$stop" ]; then
@@ -49,3 +55,19 @@ jobs:
               "$URL" || echo "$(date -u +%H:%M:%S) sin respuesta"
             sleep 240
           done
+
+      - name: Relanzar la cadena
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(date +%s)" -ge "$(date -d "$STOP_AT" +%s)" ]; then
+            echo "Semana de evaluación terminada: no se relanza."
+            exit 0
+          fi
+          curl -sf -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/keep-warm.yml/dispatches" \
+            -d '{"ref":"main"}'
+          echo "Siguiente ejecución lanzada."
