@@ -37,6 +37,26 @@ describe("POST /api/test/reset-data", () => {
     expect((await reset("token-incorrecto")).status).toBe(401);
   });
 
+  it("queda deshabilitado (503) si TEST_ENDPOINTS_TOKEN no está configurado", async () => {
+    const original = process.env.TEST_ENDPOINTS_TOKEN;
+    process.env.TEST_ENDPOINTS_TOKEN = "  \n";
+    try {
+      expect((await reset()).status).toBe(503);
+    } finally {
+      process.env.TEST_ENDPOINTS_TOKEN = original;
+    }
+  });
+
+  it("ignora espacios o saltos de línea alrededor del token configurado", async () => {
+    const original = process.env.TEST_ENDPOINTS_TOKEN;
+    process.env.TEST_ENDPOINTS_TOKEN = `${TOKEN}\n`;
+    try {
+      expect((await reset()).status).toBe(200);
+    } finally {
+      process.env.TEST_ENDPOINTS_TOKEN = original;
+    }
+  });
+
   it("es repetible: dos resets dejan exactamente los mismos datos", async () => {
     const snapshot = () =>
       getDb().execute<{
