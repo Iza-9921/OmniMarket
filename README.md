@@ -4,7 +4,14 @@ Dashboard de analítica y administración de e-commerce construido con Next.js (
 
 **Producción:** <https://omnimarket-psi.vercel.app> · estado: <https://omnimarket-psi.vercel.app/api/health>
 
-> **Estado:** Fase 1 (datos y endpoints de auditoría). La interfaz de negocio llega en las siguientes fases. El plan completo está en [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
+> **Estado:** Fase 2 (autenticación OAuth). El CRUD, el Kanban y el dashboard llegan en las siguientes fases. El plan completo está en [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md).
+
+## Autenticación
+
+- Inicio de sesión exclusivamente con **Google** o **GitHub** (OAuth 2.0, Auth.js v5). No hay contraseñas.
+- Sin sesión, las páginas privadas redirigen a `/login` y las APIs privadas responden `401`. Los endpoints `/api/test/*` y `/api/health` no exigen sesión.
+- Todo usuario nuevo recibe el rol **`OPERATOR`** (lo fija la base de datos). Nadie es `ADMIN` por defecto; un administrador solo se asigna a mano en la base de datos.
+- Sesiones JWT de 8 horas en una cookie `httpOnly`. El proxy (`src/proxy.ts`) solo decodifica el token; cada página privada vuelve a validar la sesión.
 
 ## Endpoints de auditoría
 
@@ -97,4 +104,4 @@ El despliegue automático de Vercel desde Git está desactivado en [`vercel.json
 
 GitHub (_Settings → Secrets and variables → Actions_): `VERCEL_TOKEN`, `VERCEL_ORG_ID` (Team ID) y `VERCEL_PROJECT_ID`.
 
-Vercel (_Project → Settings → Environment Variables_): `DATABASE_URL` y `DATABASE_URL_UNPOOLED` (integración de Neon) y `TEST_ENDPOINTS_TOKEN`.
+Vercel (_Project → Settings → Environment Variables_): `DATABASE_URL` y `DATABASE_URL_UNPOOLED` (integración de Neon), `TEST_ENDPOINTS_TOKEN`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_GITHUB_ID` y `AUTH_GITHUB_SECRET`.

@@ -7,19 +7,23 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
 import {
+  DEFAULT_USER_ROLE,
   ORDER_STATUSES,
   PRODUCT_STATUSES,
   STATUS_EVENT_SOURCES,
+  USER_ROLES,
 } from "@/lib/domain";
 
 // El dinero se guarda en centavos (enteros) para evitar errores de redondeo.
 
+export const userRole = pgEnum("user_role", USER_ROLES);
 export const orderStatus = pgEnum("order_status", ORDER_STATUSES);
 export const productStatus = pgEnum("product_status", PRODUCT_STATUSES);
 export const statusEventSource = pgEnum(
@@ -35,6 +39,44 @@ const timestamps = {
     .notNull()
     .defaultNow(),
 };
+
+// Usuarios y cuentas OAuth (forma que exige @auth/drizzle-adapter). Las sesiones
+// son JWT, así que no hay tabla de sesiones. El reset de datos no toca estas tablas.
+export const users = pgTable("users", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("email_verified", { mode: "date" }),
+  image: text("image"),
+  // El valor por defecto lo aplica la base de datos: un alta nunca elige su rol.
+  role: userRole("role").notNull().default(DEFAULT_USER_ROLE),
+  createdAt: timestamps.createdAt,
+});
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
+    index("accounts_user_idx").on(t.userId),
+  ],
+);
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -132,8 +174,10 @@ export const orderStatusEvents = pgTable(
       .references(() => orders.id, { onDelete: "cascade" }),
     fromStatus: orderStatus("from_status"),
     toStatus: orderStatus("to_status").notNull(),
-    // Se enlazará con la tabla de usuarios cuando exista (F2).
-    actorUserId: text("actor_user_id"),
+    // Quién hizo el cambio; null para el seed o si el usuario se elimina.
+    actorUserId: text("actor_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     source: statusEventSource("source").notNull(),
     createdAt: timestamps.createdAt,
   },

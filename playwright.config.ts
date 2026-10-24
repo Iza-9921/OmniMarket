@@ -5,6 +5,17 @@ import { defineConfig, devices } from "@playwright/test";
 const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
 const port = Number(process.env.PORT ?? 3100);
 
+// En local, las pruebas comparten los secretos de .env.local con el servidor
+// (AUTH_SECRET para simular la sesión, TEST_ENDPOINTS_TOKEN para el reset).
+// Las variables ya definidas en el entorno no se sobrescriben.
+if (!externalBaseURL) {
+  try {
+    process.loadEnvFile(".env.local");
+  } catch {
+    // Sin .env.local (p. ej. en CI): se usan las variables del entorno.
+  }
+}
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,

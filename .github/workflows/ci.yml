@@ -66,8 +66,9 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/omnimarket_ci # BD efímera de CI
-      # Valor solo para CI; el de producción vive en Vercel.
+      # Valores solo para CI; los de producción viven en Vercel.
       TEST_ENDPOINTS_TOKEN: ci-e2e-token-no-es-secreto
+      AUTH_SECRET: ci-auth-secret-solo-para-pruebas-e2e-0001
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup

@@ -1,12 +1,9 @@
 import { expect, test } from "./fixtures";
 
-// Prueba de humo de F0. Los tres flujos E2E obligatorios (§5) llegan en F2–F4.
-test("la página principal carga sin errores de consola", async ({ page }) => {
-  await page.goto("/");
-
-  await expect(page).toHaveTitle("OmniMarket · Operations Hub");
+test("la página de login carga sin errores de consola", async ({ page }) => {
+  await page.goto("/login");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Operations Hub" }),
+    page.getByRole("heading", { level: 1, name: "Inicia sesión" }),
   ).toBeVisible();
 });
 

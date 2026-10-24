@@ -23,6 +23,17 @@ export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 export const STATUS_EVENT_SOURCES = ["KANBAN", "BULK", "FORM", "SEED"] as const;
 export type StatusEventSource = (typeof STATUS_EVENT_SOURCES)[number];
 
+// Roles (decisión D4): todo usuario nuevo entra como OPERATOR; nadie es ADMIN por defecto.
+export const USER_ROLES = ["ADMIN", "OPERATOR", "VIEWER"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+export const DEFAULT_USER_ROLE: UserRole = "OPERATOR";
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: "Administrador",
+  OPERATOR: "Operador",
+  VIEWER: "Solo lectura",
+};
+
 // Región del negocio (decisión D5).
 export const CURRENCY = "MXN";
 export const LOCALE = "es-MX";
