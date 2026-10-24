@@ -514,15 +514,17 @@ jobs:
 
 ---
 
-## 12. Decisiones pendientes (requieren tu confirmación)
+## 12. Decisiones tomadas
 
-| #   | Decisión                                                                                                                  | Mi recomendación                                                                                                                                                                                                                                                     |
-| --- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | ¿Los endpoints `/api/test/*` son públicos o requieren sesión o token? El evaluador los llamará con `curl` o el navegador. | `analytics` y `kanban-status`: **públicos y de solo lectura**. `reset-data`: público pero con límite de frecuencia y que solo restaure el seed; documentado en el README. Si el docente lo permite, protegerlo con la cabecera `x-test-token` indicada en el README. |
-| D2  | ¿Repositorio nuevo? El repo actual (SIFAT, Flask) no tiene relación.                                                      | **Repo nuevo** `omnimarket-operations-hub`; este plan se mueve ahí.                                                                                                                                                                                                  |
-| D3  | ¿Postgres (Neon) o MySQL (el que ya conoce el equipo)?                                                                    | Postgres en Neon.                                                                                                                                                                                                                                                    |
-| D4  | ¿Cualquier cuenta Google o GitHub puede entrar?                                                                           | Sí, con rol `OPERATOR` por defecto para que el evaluador pueda probar todo. Los roles más finos son una mejora opcional.                                                                                                                                             |
-| D5  | Moneda y zona horaria.                                                                                                    | MXN, `es-MX`, `America/Mexico_City`.                                                                                                                                                                                                                                 |
+Confirmadas por la responsable del proyecto el 2026-10-24.
+
+| #   | Decisión                    | Resultado                                                                                                                                                                                          |
+| --- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Protección de `/api/test/*` | `analytics` y `kanban-status`: públicos y de solo lectura. `reset-data`: exige la cabecera `x-test-token` (variable `TEST_ENDPOINTS_TOKEN`); el valor se documenta en el README para el evaluador. |
+| D2  | Repositorio                 | Repo propio: `github.com/Iza-9921/OmniMarket` (carpeta `~/Desktop/OmniMarket`).                                                                                                                    |
+| D3  | Base de datos               | PostgreSQL en Neon, integrado desde Vercel, en la misma región que las funciones.                                                                                                                  |
+| D4  | Rol inicial                 | Todo usuario nuevo entra como `OPERATOR` (Kanban, CRUD y Bulk Update). Nadie es `ADMIN` por defecto.                                                                                               |
+| D5  | Región                      | MXN, `es-MX`, `America/Mexico_City`.                                                                                                                                                               |
 
 ---
 
