@@ -10,8 +10,18 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import { TAX_RATE, TIME_ZONE } from "@/lib/domain";
+import {
+  ORDER_STATUSES,
+  TAX_RATE,
+  TIME_ZONE,
+  type OrderStatus,
+} from "@/lib/domain";
 import { toBusinessDay } from "@/lib/format";
+import {
+  KANBAN_COLUMN_LIMIT,
+  type KanbanBoard,
+  type KanbanCard,
+} from "@/lib/kanban";
 import { orderTotals } from "@/lib/metrics";
 import type { OrderData } from "@/lib/schemas/catalog";
 import type { OrderListQuery } from "@/lib/schemas/lists";
@@ -186,12 +196,13 @@ function statusEvent(
   fromStatus: OrderData["status"] | null,
   toStatus: OrderData["status"],
   actorId: string | null,
+  source: "FORM" | "KANBAN" = "FORM",
 ) {
   return {
     orderId,
     fromStatus,
     toStatus,
-    source: "FORM" as const,
+    source,
     actorUserId: actorId
       ? sql`(select id from users where id = ${actorId})`
       : null,
@@ -313,4 +324,112 @@ export async function listCustomers(db: Database) {
     .select({ id: customers.id, name: customers.name, email: customers.email })
     .from(customers)
     .orderBy(asc(customers.name));
+}
+
+type BoardRow = Omit<KanbanCard, "updatedAt"> & {
+  updatedAt: Date;
+  total: number;
+};
+
+/**
+ * Tablero Kanban: las `limit` tarjetas más recientes de cada columna y el total
+ * por columna, en una sola consulta (window functions).
+ */
+export async function getKanbanBoard(
+  db: Database,
+  limit = KANBAN_COLUMN_LIMIT,
+): Promise<KanbanBoard> {
+  const { rows } = await db.execute<BoardRow>(sql`
+    select id, code, status, version, "customerName", "totalCents", "itemsCount",
+      "updatedAt", total
+    from (
+      select o.id, o.code, o.status, o.version, c.name as "customerName",
+        o.total_cents as "totalCents",
+        (select count(*)::int from order_items i where i.order_id = o.id) as "itemsCount",
+        o.updated_at as "updatedAt",
+        row_number() over (partition by o.status order by o.updated_at desc, o.code) as position,
+        (count(*) over (partition by o.status))::int as total
+      from orders o
+      join customers c on c.id = o.customer_id
+    ) ranked
+    where position <= ${limit}
+    order by position
+  `);
+
+  const board = Object.fromEntries(
+    ORDER_STATUSES.map((status) => [
+      status,
+      { total: 0, items: [] as KanbanCard[] },
+    ]),
+  ) as KanbanBoard;
+  for (const { total, updatedAt, ...card } of rows) {
+    board[card.status].total = total;
+    board[card.status].items.push({
+      ...card,
+      updatedAt: new Date(updatedAt).toISOString(),
+    });
+  }
+  return board;
+}
+
+/**
+ * Cambia el estado de un pedido desde el Kanban. Con `version` aplica control
+ * de concurrencia optimista: si otro usuario lo cambió antes, responde conflicto.
+ */
+export async function updateOrderStatus(
+  db: Database,
+  id: string,
+  status: OrderStatus,
+  version: number,
+  actorId: string | null,
+): Promise<KanbanCard> {
+  await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        status: orders.status,
+        version: orders.version,
+        placedAt: orders.placedAt,
+      })
+      .from(orders)
+      .where(eq(orders.id, id))
+      .for("update");
+    if (!current) throw new NotFoundError("ORDER_NOT_FOUND");
+    if (current.version !== version) {
+      throw new ConflictError(
+        "VERSION_CONFLICT",
+        "Otro usuario modificó este pedido. El tablero se actualizó.",
+      );
+    }
+    if (current.status === status) return;
+
+    await tx
+      .update(orders)
+      .set({
+        status,
+        version: sql`${orders.version} + 1`,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(orders.id, id));
+    await tx
+      .insert(orderStatusEvents)
+      .values(statusEvent(id, current.status, status, actorId, "KANBAN"));
+    // Cancelar o reactivar cambia las ventas del día del pedido.
+    await refreshDailySales(tx, [toBusinessDay(current.placedAt)]);
+  });
+
+  const [card] = await db
+    .select({
+      id: orders.id,
+      code: orders.code,
+      status: orders.status,
+      version: orders.version,
+      customerName: customers.name,
+      totalCents: orders.totalCents,
+      itemsCount: sql<number>`(select count(*)::int from ${orderItems} where ${orderItems.orderId} = ${orders.id})`,
+      updatedAt: orders.updatedAt,
+    })
+    .from(orders)
+    .innerJoin(customers, eq(customers.id, orders.customerId))
+    .where(eq(orders.id, id));
+  return { ...card, updatedAt: card.updatedAt.toISOString() };
 }

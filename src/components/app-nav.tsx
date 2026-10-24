@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/products", label: "Productos" },
   { href: "/orders", label: "Pedidos" },
+  { href: "/kanban", label: "Kanban" },
 ];
 
 export function AppNav() {

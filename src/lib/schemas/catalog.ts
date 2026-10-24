@@ -66,3 +66,9 @@ export const orderInputSchema = z.object({
 
 export type OrderInput = z.input<typeof orderInputSchema>;
 export type OrderData = z.output<typeof orderInputSchema>;
+
+/** Cambio de estado desde el Kanban (PATCH /api/orders/[id]/status). */
+export const statusChangeSchema = z.object({
+  status: z.enum(ORDER_STATUSES),
+  version: z.coerce.number().int().positive(),
+});

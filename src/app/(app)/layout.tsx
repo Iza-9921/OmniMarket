@@ -12,7 +12,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
     <Providers>
       <div className="flex min-h-full flex-1 flex-col">
         <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4">
             <div className="flex items-center gap-6">
               <Link href="/dashboard" aria-label="Ir al dashboard">
                 <Brand />
@@ -26,7 +26,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             </Suspense>
           </div>
         </header>
-        <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+        <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
           {children}
         </div>
       </div>

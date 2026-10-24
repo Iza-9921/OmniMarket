@@ -21,10 +21,11 @@ export default defineConfig({
   // funciones): se amplían las esperas para no confundir lentitud con fallos.
   expect: { timeout: externalBaseURL ? 10_000 : 5_000 },
   testDir: "./e2e",
-  fullyParallel: true,
+  // En serie: varias pruebas usan reset-data y modifican pedidos concretos.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: externalBaseURL ?? `http://localhost:${port}`,

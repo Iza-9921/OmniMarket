@@ -78,6 +78,7 @@ export function useDeleteOrder() {
     // refrescan los listados.
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: orderKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: ["orders", "board"] });
       return queryClient.invalidateQueries({ queryKey: ["orders", "list"] });
     },
   });

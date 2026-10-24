@@ -1,15 +1,28 @@
 import { test as base, expect } from "@playwright/test";
 
+type Fixtures = {
+  /** Errores de consola que una prueba provoca a propósito (p. ej. un 500 simulado). */
+  allowedConsoleErrors: RegExp[];
+  consoleErrors: string[];
+};
+
 // Toda prueba E2E falla si el navegador registra un error en consola o una
-// excepción no capturada (requisito "sin errores de consola", §1).
-export const test = base.extend<{ consoleErrors: string[] }>({
+// excepción no capturada (requisito "sin errores de consola", §1), salvo los
+// que la propia prueba declare como esperados con `test.use`.
+export const test = base.extend<Fixtures>({
+  allowedConsoleErrors: [[], { option: true }],
   consoleErrors: [
-    async ({ page }, use) => {
+    async ({ page, allowedConsoleErrors }, use) => {
       const errors: string[] = [];
+      const record = (text: string) => {
+        if (!allowedConsoleErrors.some((pattern) => pattern.test(text))) {
+          errors.push(text);
+        }
+      };
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
+        if (message.type() === "error") record(message.text());
       });
-      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("pageerror", (error) => record(error.message));
 
       await use(errors);
 
