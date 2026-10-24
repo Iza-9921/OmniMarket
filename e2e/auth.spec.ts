@@ -75,4 +75,21 @@ test.describe("con sesión simulada", () => {
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fdashboard$/);
   });
+
+  test("las respuestas del proxy nunca reescriben la cookie de sesión", async ({
+    page,
+  }) => {
+    // Si el proxy renovara la cookie, un prefetch que responde después de
+    // cerrar sesión volvería a abrirla (visto en producción).
+    const pages = ["/dashboard", "/products", "/orders", "/privacidad"];
+    for (const path of pages) {
+      const response = await page.goto(path);
+      const setCookie = (await response!.headersArray()).filter(
+        (h) =>
+          h.name.toLowerCase() === "set-cookie" &&
+          h.value.includes("session-token"),
+      );
+      expect(setCookie, path).toEqual([]);
+    }
+  });
 });
