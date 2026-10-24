@@ -38,6 +38,7 @@ test("crea un pedido, aparece en la tabla y se puede eliminar", async ({
   await page
     .getByRole("searchbox", { name: "Buscar por código o cliente" })
     .fill(code);
+  await expect(page).toHaveURL(new RegExp(`q=${code}`));
   const row = page.getByRole("row", { name: new RegExp(code) });
   await expect(row).toBeVisible();
   await expect(row).toContainText("Pendiente");
@@ -65,4 +66,32 @@ test("filtra los pedidos por estado desde la URL", async ({ page }) => {
   for (const text of await rows.allTextContents()) {
     expect(text).toContain("Cancelado");
   }
+});
+
+test("hacer clic en un pedido mientras la búsqueda espera no te regresa al listado", async ({
+  page,
+}) => {
+  // Simula una red lenta: la navegación al detalle tarda más que el retardo de
+  // 300 ms de la búsqueda, que es cuando la búsqueda intentaba regresar al listado.
+  await page.route(/\/orders\/[0-9a-f-]{36}\?_rsc=/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.continue();
+  });
+  await page.goto("/orders");
+  const firstLink = page
+    .getByRole("table", { name: "Pedidos" })
+    .getByRole("link")
+    .first();
+  await firstLink.waitFor();
+  await page
+    .getByRole("searchbox", { name: "Buscar por código o cliente" })
+    .fill("ORD");
+  await firstLink.click(); // antes de que pasen los 300 ms de la búsqueda
+
+  await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
+  await page.waitForTimeout(1000);
+  await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
+  await expect(
+    page.getByRole("heading", { name: "Detalle del pedido" }),
+  ).toBeVisible();
 });

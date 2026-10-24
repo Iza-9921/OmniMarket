@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FilterSelect } from "@/components/products/products-view";
 import { Input } from "@/components/ui/controls";
 import { DataTable } from "@/components/ui/data-table";
@@ -23,19 +23,16 @@ type Row = OrderList["data"][number];
 
 export function OrdersView() {
   const { filters, setFilters } = useUrlFilters(orderListQuerySchema);
-  const { data, isPending, isFetching, isError, refetch } =
-    useOrderList(filters);
-  const catalog = useCatalog();
-
+  // La URL se actualiza al teclear (evento síncrono); solo la consulta a la API
+  // espera 300 ms. Un temporizador nunca toca la URL, así que no puede pisar
+  // un clic de navegación hecho mientras se escribía.
   const [search, setSearch] = useState(filters.q ?? "");
-  const debouncedSearch = useDebouncedValue(search);
-  useEffect(() => {
-    if ((debouncedSearch || undefined) !== filters.q) {
-      setFilters({
-        q: debouncedSearch || undefined,
-      } as Partial<OrderListQuery>);
-    }
-  }, [debouncedSearch, filters.q, setFilters]);
+  const debouncedQ = useDebouncedValue(filters.q);
+  const { data, isPending, isFetching, isError, refetch } = useOrderList({
+    ...filters,
+    q: debouncedQ,
+  });
+  const catalog = useCatalog();
 
   const columns = useMemo<ColumnDef<Row, unknown>[]>(
     () => [
@@ -94,7 +91,12 @@ export function OrdersView() {
             type="search"
             placeholder="Buscar por código o cliente"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setFilters({
+                q: e.target.value.trim() || undefined,
+              } as Partial<OrderListQuery>);
+            }}
           />
         </div>
         <FilterSelect

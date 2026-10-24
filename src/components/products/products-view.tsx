@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button, ButtonLink, Input, Select } from "@/components/ui/controls";
@@ -40,22 +40,18 @@ function StockCell({ stock }: { stock: number }) {
 
 export function ProductsView() {
   const { filters, setFilters } = useUrlFilters(productListQuerySchema);
-  const { data, isPending, isFetching, isError, refetch } =
-    useProductList(filters);
+  // La URL se actualiza al teclear (evento síncrono); solo la consulta a la API
+  // espera 300 ms. Un temporizador nunca toca la URL, así que no puede pisar
+  // un clic de navegación hecho mientras se escribía.
+  const [search, setSearch] = useState(filters.q ?? "");
+  const debouncedQ = useDebouncedValue(filters.q);
+  const { data, isPending, isFetching, isError, refetch } = useProductList({
+    ...filters,
+    q: debouncedQ,
+  });
   const catalog = useCatalog();
   const deleteProduct = useDeleteProduct();
   const [toDelete, setToDelete] = useState<Row | null>(null);
-
-  // Búsqueda al escribir, con espera de 300 ms para no consultar en cada tecla.
-  const [search, setSearch] = useState(filters.q ?? "");
-  const debouncedSearch = useDebouncedValue(search);
-  useEffect(() => {
-    if ((debouncedSearch || undefined) !== filters.q) {
-      setFilters({
-        q: debouncedSearch || undefined,
-      } as Partial<ProductListQuery>);
-    }
-  }, [debouncedSearch, filters.q, setFilters]);
 
   const columns = useMemo<ColumnDef<Row, unknown>[]>(
     () => [
@@ -169,7 +165,12 @@ export function ProductsView() {
             type="search"
             placeholder="Buscar por nombre o SKU"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setFilters({
+                q: e.target.value.trim() || undefined,
+              } as Partial<ProductListQuery>);
+            }}
           />
         </div>
         <FilterSelect
