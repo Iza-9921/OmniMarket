@@ -1,0 +1,19 @@
+name: Preparar Node y dependencias
+description: Instala Node con caché de npm y ejecuta npm ci, mostrando el error de npm como anotación si falla.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v5
+      with:
+        node-version: "24"
+        cache: npm
+    - name: Instalar dependencias
+      shell: bash
+      run: |
+        echo "node $(node --version) · npm $(npm --version)"
+        if ! npm ci > npm-ci.log 2>&1; then
+          cat npm-ci.log
+          echo "::error title=npm ci::$(grep -m 8 'npm error' npm-ci.log | tr '\n' ' ')"
+          exit 1
+        fi
