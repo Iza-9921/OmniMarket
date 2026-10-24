@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { apiFetch, jsonBody } from "@/lib/api-client";
 import { filtersToParams } from "@/lib/filters";
+import { withoutRow } from "./use-products";
 import type { OrderInput } from "@/lib/schemas/catalog";
 import type { OrderListQuery } from "@/lib/schemas/lists";
 import type {
@@ -54,6 +55,10 @@ export function useCatalog() {
   });
 }
 
+// Igual que en productos: se cancelan las consultas de listado en curso antes
+// de cada cambio para que una respuesta vieja no lo sobrescriba.
+const listKey = ["orders", "list"] as const;
+
 export function useSaveOrder(id?: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -62,6 +67,7 @@ export function useSaveOrder(id?: string) {
         method: id ? "PATCH" : "POST",
         body: jsonBody(input),
       }),
+    onMutate: () => queryClient.cancelQueries({ queryKey: listKey }),
     onSuccess: (order) => {
       queryClient.setQueryData(orderKeys.detail(order.id), order);
       return queryClient.invalidateQueries({ queryKey: orderKeys.all });
@@ -74,12 +80,15 @@ export function useDeleteOrder() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<void>(`/api/orders/${id}`, { method: "DELETE" }),
-    // El detalle borrado sale de la caché (si se refrescara daría 404) y solo se
-    // refrescan los listados.
+    onMutate: () => queryClient.cancelQueries({ queryKey: listKey }),
     onSuccess: (_data, id) => {
+      queryClient.setQueriesData<OrderList>({ queryKey: listKey }, (list) =>
+        list ? withoutRow(list, id) : list,
+      );
+      // El detalle borrado sale de la caché (si se refrescara daría 404).
       queryClient.removeQueries({ queryKey: orderKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: ["orders", "board"] });
-      return queryClient.invalidateQueries({ queryKey: ["orders", "list"] });
+      return queryClient.invalidateQueries({ queryKey: listKey });
     },
   });
 }

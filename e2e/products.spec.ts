@@ -133,3 +133,51 @@ test("elimina el producto tras confirmar en el modal", async ({ page }) => {
     page.getByText("No hay productos que coincidan con los filtros."),
   ).toBeVisible();
 });
+
+test("borrar mientras una búsqueda está en camino no deja la fila en la tabla", async ({
+  page,
+}) => {
+  const raceSku = `E2E-R${Date.now().toString(36).toUpperCase()}`;
+  const raceName = `Carrera ${raceSku}`;
+  const created = await page.request.post("/api/products", {
+    data: {
+      sku: raceSku,
+      name: raceName,
+      categoryId: 1,
+      price: "10.00",
+      cost: "5.00",
+      stock: 1,
+      status: "ACTIVE",
+    },
+  });
+  expect(created.status()).toBe(201);
+
+  // La búsqueda tarda 1.5 s: sale antes del borrado y responde después, con
+  // el producto todavía incluido (visto en producción).
+  await page.route(/\/api\/products\?.*q=/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+
+  await page.goto("/products");
+  const row = page.getByRole("row", { name: new RegExp(raceSku) });
+  await expect(row).toBeVisible(); // el más reciente aparece primero
+  await page
+    .getByRole("searchbox", { name: "Buscar por nombre o SKU" })
+    .fill(raceSku);
+  await page.waitForTimeout(400); // la búsqueda ya salió (retardo de 300 ms)
+
+  await row.getByRole("button", { name: `Eliminar ${raceName}` }).click();
+  await page
+    .getByRole("dialog", { name: "Eliminar producto" })
+    .getByRole("button", { name: "Eliminar" })
+    .click();
+  await expect(
+    page.getByText(`Producto «${raceName}» eliminado`),
+  ).toBeVisible();
+
+  await page.waitForTimeout(2000); // llega la respuesta vieja de la búsqueda
+  await expect(
+    page.getByRole("row", { name: new RegExp(raceSku) }),
+  ).toHaveCount(0);
+});
