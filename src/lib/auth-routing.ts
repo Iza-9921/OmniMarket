@@ -4,8 +4,11 @@ export const LOGIN_PATH = "/login";
 export const HOME_PATH = "/dashboard";
 
 // Rutas que nunca exigen sesión: el flujo OAuth, los endpoints de auditoría
-// (públicos o protegidos por su propio token, decisión D1) y la salud del servicio.
+// (públicos o protegidos por su propio token, decisión D1), la salud del servicio
+// y las páginas legales.
 const PUBLIC_PREFIXES = ["/api/auth", "/api/test", "/api/health"];
+// Páginas legales enlazadas desde la pantalla de consentimiento de Google.
+const PUBLIC_PAGES = ["/privacidad", "/terminos"];
 
 export type AccessDecision =
   | { type: "allow" }
@@ -16,7 +19,10 @@ const matchesPrefix = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 export function isPublicPath(pathname: string) {
-  return PUBLIC_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
+  return (
+    PUBLIC_PAGES.includes(pathname) ||
+    PUBLIC_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix))
+  );
 }
 
 /**

@@ -48,6 +48,19 @@ describe("decideAccess", () => {
   });
 });
 
+describe("páginas legales", () => {
+  it("son públicas, con o sin sesión", () => {
+    for (const path of ["/privacidad", "/terminos"]) {
+      expect(decideAccess(path, false)).toEqual({ type: "allow" });
+      expect(decideAccess(path, true)).toEqual({ type: "allow" });
+    }
+  });
+
+  it("no hacen públicas sus subrutas", () => {
+    expect(decideAccess("/privacidad/admin", false).type).toBe("redirect");
+  });
+});
+
 describe("isPublicPath", () => {
   it("no confunde rutas que solo comparten el prefijo", () => {
     expect(isPublicPath("/api/test")).toBe(true);

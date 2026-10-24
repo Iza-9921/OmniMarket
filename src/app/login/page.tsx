@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Brand } from "@/components/brand";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +38,17 @@ export default function LoginPage({
         <Suspense fallback={<LoginFormSkeleton />}>
           <LoginForm searchParams={searchParams} />
         </Suspense>
+        <p className="mt-8 text-center text-xs text-slate-500">
+          Al continuar aceptas las{" "}
+          <Link href="/terminos" className="underline hover:text-slate-700">
+            condiciones del servicio
+          </Link>{" "}
+          y la{" "}
+          <Link href="/privacidad" className="underline hover:text-slate-700">
+            política de privacidad
+          </Link>
+          .
+        </p>
       </div>
     </main>
   );
