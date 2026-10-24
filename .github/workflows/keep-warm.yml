@@ -8,7 +8,8 @@
 # Los `schedule` de GitHub pueden retrasarse o no ejecutarse (pasó al activarlo),
 # así que no dependemos de ellos: cada ejecución hace ping durante casi 6 horas
 # (el máximo de un job) y antes de terminar se vuelve a lanzar con
-# workflow_dispatch. El `schedule` queda solo de respaldo por si la cadena se corta.
+# workflow_dispatch. El `schedule` y el `push` solo arrancan una cadena si no
+# hay otra en curso; si la hay, terminan en segundos sin hacer nada.
 #
 # Presupuesto: despierta 24 h consume ~6 CU-hora al día (0.25 CU) de las 100 del
 # mes en el plan gratis. Por eso se detiene sola en STOP_AT.
@@ -21,11 +22,6 @@ on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
-
-# Una sola cadena activa: la ejecución nueva reemplaza a la anterior.
-concurrency:
-  group: keep-warm
-  cancel-in-progress: true
 
 permissions:
   actions: write
@@ -41,9 +37,23 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
-      - name: Ping cada 4 minutos durante 5 h 50 min
+      - name: ¿Ya hay una cadena en curso?
+        id: chain
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          end=$(( $(date +%s) + 6 * 60 ))
+          others=$(curl -sf \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/keep-warm.yml/runs?status=in_progress" \
+            | jq "[.workflow_runs[] | select(.id != ${{ github.run_id }})] | length")
+          echo "Otras ejecuciones en curso: $others"
+          if [ "$others" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Ping cada 4 minutos durante 5 h 50 min
+        if: steps.chain.outputs.skip != 'true'
+        run: |
+          end=$(( $(date +%s) + 350 * 60 ))
           stop=$(date -d "$STOP_AT" +%s)
           while [ "$(date +%s)" -lt "$end" ]; do
             if [ "$(date +%s)" -ge "$stop" ]; then
@@ -57,7 +67,7 @@ jobs:
           done
 
       - name: Relanzar la cadena
-        if: success()
+        if: success() && steps.chain.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
