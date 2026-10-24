@@ -244,24 +244,46 @@ function DraggableCard({
   pending: boolean;
   onMove: (card: KanbanCard, toStatus: OrderStatus) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: card.id,
-    disabled: pending,
-  });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } =
+    useDraggable({
+      id: card.id,
+      disabled: pending,
+    });
 
   return (
+    // Con el ratón se arrastra desde cualquier punto de la tarjeta; con el
+    // teclado, desde el asa. Así el enlace y el selector no quedan anidados
+    // dentro de otro control (WCAG 4.1.2).
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      aria-roledescription="tarjeta arrastrable"
-      aria-label={`Pedido ${card.code}, ${card.customerName}, ${label(card.status)}`}
+      onPointerDown={
+        listeners?.onPointerDown as React.PointerEventHandler | undefined
+      }
       data-testid={`card-${card.code}`}
-      className={`touch-none rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
-        isDragging ? "opacity-40" : ""
-      } ${pending ? "cursor-progress" : "cursor-grab active:cursor-grabbing"}`}
+      className={`touch-none rounded-lg ${isDragging ? "opacity-40" : ""} ${
+        pending ? "cursor-progress" : "cursor-grab active:cursor-grabbing"
+      }`}
     >
-      <CardBody card={card} pending={pending} onMove={onMove} />
+      <CardBody
+        card={card}
+        pending={pending}
+        onMove={onMove}
+        handle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            onKeyDown={
+              listeners?.onKeyDown as React.KeyboardEventHandler | undefined
+            }
+            aria-roledescription="tarjeta arrastrable"
+            aria-label={`Arrastrar pedido ${card.code}, ${card.customerName}, ${label(card.status)}`}
+            className="-m-1 rounded p-1 text-slate-400 hover:text-slate-600 focus-visible:outline-2 focus-visible:outline-indigo-600"
+          >
+            <GripIcon />
+          </button>
+        }
+      />
     </div>
   );
 }
@@ -271,11 +293,14 @@ function CardBody({
   overlay = false,
   pending = false,
   onMove,
+  handle,
 }: {
   card: KanbanCard;
   overlay?: boolean;
   pending?: boolean;
   onMove?: (card: KanbanCard, toStatus: OrderStatus) => void;
+  /** Asa de arrastre para el teclado (la vista flotante muestra solo el icono). */
+  handle?: React.ReactNode;
 }) {
   const selectId = useId();
   return (
@@ -285,15 +310,22 @@ function CardBody({
       } ${pending ? "opacity-70" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <Link
-          href={`/orders/${card.id}`}
-          className="font-mono text-xs font-semibold text-slate-900 hover:text-indigo-600"
-          // El enlace no debe iniciar el arrastre ni robar el foco del teclado.
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          {card.code}
-        </Link>
+        <span className="flex items-center gap-1.5">
+          {handle ?? (
+            <span className="text-slate-400">
+              <GripIcon />
+            </span>
+          )}
+          <Link
+            href={`/orders/${card.id}`}
+            className="font-mono text-xs font-semibold text-slate-900 hover:text-indigo-600"
+            // El enlace no debe iniciar el arrastre ni robar el foco del teclado.
+            onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {card.code}
+          </Link>
+        </span>
         <span className="font-medium text-slate-900 tabular-nums">
           {formatCurrency(card.totalCents)}
         </span>
@@ -328,6 +360,23 @@ function CardBody({
         )}
       </div>
     </article>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="size-3.5"
+      fill="currentColor"
+    >
+      {[3, 8, 13].flatMap((y) =>
+        [5.5, 10.5].map((x) => (
+          <circle key={`${x}-${y}`} cx={x} cy={y} r={1.3} />
+        )),
+      )}
+    </svg>
   );
 }
 

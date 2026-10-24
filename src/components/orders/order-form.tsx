@@ -362,10 +362,10 @@ export function OrderForm({ order }: { order?: Order }) {
               {formatCurrency(estimate.totalCents)}
             </dd>
           </div>
-          <p className="pt-1 text-xs text-slate-500">
-            El servidor calcula el total definitivo con los precios vigentes.
-          </p>
         </dl>
+        <p className="mt-1 ml-auto max-w-xs text-xs text-slate-500">
+          El servidor calcula el total definitivo con los precios vigentes.
+        </p>
       </section>
 
       <div className="flex flex-wrap justify-between gap-3">

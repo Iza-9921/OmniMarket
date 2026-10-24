@@ -359,7 +359,15 @@ function DataTableToggle({
       <summary className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline">
         {label}
       </summary>
-      <div className="mt-2 max-h-64 overflow-y-auto">{children}</div>
+      {/* Con desplazamiento propio: enfocable para recorrerla con el teclado. */}
+      <div
+        role="region"
+        aria-label={label.replace(/^Ver /, "Tabla de ")}
+        tabIndex={0}
+        className="mt-2 max-h-64 overflow-y-auto rounded focus-visible:outline-2 focus-visible:outline-indigo-600"
+      >
+        {children}
+      </div>
     </details>
   );
 }

@@ -119,7 +119,7 @@ export function ProductsView() {
             </ButtonLink>
             {c.row.original.inUse ? (
               <span
-                className="inline-flex cursor-not-allowed items-center rounded-lg px-2 py-1 text-sm font-medium text-slate-400"
+                className="inline-flex cursor-not-allowed items-center rounded-lg px-2 py-1 text-sm font-medium text-slate-600"
                 title="Aparece en pedidos: cámbialo a «Archivado» en lugar de eliminarlo"
               >
                 Eliminar

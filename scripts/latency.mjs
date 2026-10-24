@@ -5,6 +5,8 @@
 // Reporta dos tiempos por petición:
 // - servidor: cabecera Server-Timing (tiempo de las consultas en el backend)
 // - total: ida y vuelta medida desde esta máquina (incluye la red)
+// y en qué región de Vercel entró la petición y cuál la ejecutó (x-vercel-id),
+// para interpretar el total: depende de dónde está quien mide.
 
 const baseUrl = process.argv[2] ?? "http://localhost:3000";
 const runs = Number(process.argv[3] ?? 50);
@@ -19,6 +21,7 @@ const percentile = (values, p) => {
 const round = (n) => Math.round(n * 10) / 10;
 
 const server = [];
+const routes = new Set();
 const total = [];
 for (let i = 0; i < runs; i++) {
   const started = performance.now();
@@ -31,6 +34,9 @@ for (let i = 0; i < runs; i++) {
     response.headers.get("server-timing") ?? "",
   );
   if (match) server.push(Number(match[1]));
+  // x-vercel-id = "<borde>::<función>::<id>"
+  const [edge, fn] = (response.headers.get("x-vercel-id") ?? "").split("::");
+  if (fn) routes.add(`borde ${edge} → función ${fn}`);
 }
 
 const report = (label, values) =>
@@ -44,3 +50,4 @@ console.log(
 );
 report("servidor", server);
 report("total", total);
+if (routes.size) console.log(`ruta      ${[...routes].join(", ")}`);
