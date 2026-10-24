@@ -90,6 +90,9 @@ test.describe("con sesión simulada", () => {
           h.value.includes("session-token"),
       );
       expect(setCookie, path).toEqual([]);
+      // Safari registra como error cada petición cancelada al recargar la
+      // página: se espera a que termine de cargar antes de pasar a la siguiente.
+      await page.waitForLoadState("networkidle");
     }
   });
 });

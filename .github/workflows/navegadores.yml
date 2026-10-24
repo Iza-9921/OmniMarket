@@ -1,0 +1,54 @@
+# Las 47 pruebas E2E en Firefox y WebKit (el motor de Safari), además de
+# Chromium. No bloquea el despliegue (eso lo hace ci.yml con Chromium): sirve
+# para comprobar que la app funciona igual en los navegadores del evaluador.
+# Se lanza a mano desde Actions, o sola cuando cambia este archivo.
+name: Navegadores
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/navegadores.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E en ${{ matrix.browser }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: omnimarket_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/omnimarket_ci # BD efímera de CI
+      # Valores solo para CI; los de producción viven en Vercel.
+      TEST_ENDPOINTS_TOKEN: ci-e2e-token-no-es-secreto
+      AUTH_SECRET: ci-auth-secret-solo-para-pruebas-e2e-0001
+      E2E_ALL_BROWSERS: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run build
+      - run: npx playwright test --project=${{ matrix.browser }}
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 7

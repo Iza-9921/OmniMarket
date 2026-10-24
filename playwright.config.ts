@@ -31,7 +31,16 @@ export default defineConfig({
     baseURL: externalBaseURL ?? `http://localhost:${port}`,
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Chromium siempre; con E2E_ALL_BROWSERS=1 también Firefox y WebKit (Safari).
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    ...(process.env.E2E_ALL_BROWSERS
+      ? [
+          { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+          { name: "webkit", use: { ...devices["Desktop Safari"] } },
+        ]
+      : []),
+  ],
   webServer: externalBaseURL
     ? undefined
     : {
